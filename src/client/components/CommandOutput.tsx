@@ -3,9 +3,10 @@ import type { CommandOutput as CommandOutputType } from '../types';
 interface CommandOutputProps {
   output: CommandOutputType[];
   isRunning: boolean;
+  onBack?: () => void;
 }
 
-export function CommandOutput({ output, isRunning }: CommandOutputProps) {
+export function CommandOutput({ output, isRunning, onBack }: CommandOutputProps) {
   const filteredOutput = output.filter(
     (o) => !o.data.includes('---RESULTS_JSON---') && !o.data.includes('---END_RESULTS---')
   );
@@ -46,6 +47,14 @@ export function CommandOutput({ output, isRunning }: CommandOutputProps) {
           </div>
         ))}
       </div>
+
+      {!isRunning && onBack && (
+        <div className="mt-4">
+          <button className="btn btn-secondary" onClick={onBack}>
+            Back
+          </button>
+        </div>
+      )}
     </div>
   );
 }

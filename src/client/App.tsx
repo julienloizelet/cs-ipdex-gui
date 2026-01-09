@@ -60,7 +60,7 @@ function App() {
       case 'ip-input':
         return <IpInputForm onSubmit={handleIpSubmit} onBack={handleBackToApiKey} />;
       case 'executing':
-        return <CommandOutput output={output} isRunning={isRunning} />;
+        return <CommandOutput output={output} isRunning={isRunning} onBack={handleBackToIpInput} />;
       case 'results':
         return (
           <ResultsView

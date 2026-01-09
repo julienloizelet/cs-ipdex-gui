@@ -1,7 +1,4 @@
 import { spawn } from 'child_process';
-import { homedir } from 'os';
-import { join } from 'path';
-import { writeFile, mkdir } from 'fs/promises';
 
 export interface CommandOutput {
   type: 'stdout' | 'stderr' | 'exit' | 'error';
@@ -51,20 +48,10 @@ export async function initIpdex(
   apiKey: string,
   onOutput: OutputCallback
 ): Promise<number> {
-  // Create config directory if needed
-  const configDir = join(homedir(), '.config', 'ipdex');
-  await mkdir(configDir, { recursive: true });
+  onOutput({ type: 'stdout', data: 'Setting API key...\n' });
 
-  // Write config file with API key
-  const configPath = join(configDir, '.ipdex');
-  const configContent = `api_key: ${apiKey}\noutput_format: json\n`;
-  await writeFile(configPath, configContent);
-
-  onOutput({ type: 'stdout', data: 'Configuration saved.\n' });
-  onOutput({ type: 'stdout', data: 'Testing API key...\n' });
-
-  // Test the API key by running a simple query
-  return runCommand(['config', 'show'], onOutput);
+  // Use ipdex config set command to set the API key
+  return runCommand(['config', 'set', '--api-key', apiKey], onOutput);
 }
 
 export async function queryIPs(
@@ -78,23 +65,41 @@ export async function queryIPs(
 
   // Query each IP with JSON output
   const results: Record<string, unknown>[] = [];
+  let hasError = false;
+  let lastError = '';
 
   for (const ip of ips) {
     const trimmedIP = ip.trim();
-    if (!trimmedIP) {continue;}
+    if (!trimmedIP) { continue; }
 
     onOutput({ type: 'stdout', data: `Querying ${trimmedIP}...\n` });
 
     const ipResults: string[] = [];
+    let ipError = '';
     const exitCode = await runCommand([trimmedIP, '-o', 'json'], (output) => {
       if (output.type === 'stdout') {
         ipResults.push(output.data);
       } else if (output.type === 'stderr') {
+        ipError += output.data;
         onOutput(output);
       }
     });
 
-    if (exitCode === 0 && ipResults.length > 0) {
+    if (exitCode !== 0) {
+      hasError = true;
+      // Capture error from stdout if stderr is empty (some errors go to stdout)
+      const errorMsg = ipError || ipResults.join('');
+      lastError = errorMsg;
+      // Show the error to the user
+      if (!ipError && errorMsg) {
+        onOutput({ type: 'stderr', data: errorMsg });
+      }
+      // Don't continue if it's an API key error (affects all queries)
+      if (errorMsg.toLowerCase().includes('api key') || errorMsg.toLowerCase().includes('unauthorized') || errorMsg.toLowerCase().includes('invalid')) {
+        onOutput({ type: 'exit', data: 'Query failed', code: exitCode });
+        return exitCode;
+      }
+    } else if (ipResults.length > 0) {
       try {
         const jsonData = JSON.parse(ipResults.join(''));
         results.push(jsonData);
@@ -109,7 +114,12 @@ export async function queryIPs(
     type: 'stdout',
     data: `\n---RESULTS_JSON---\n${JSON.stringify(results, null, 2)}\n---END_RESULTS---\n`
   });
-  onOutput({ type: 'exit', data: 'Query complete', code: 0 });
 
+  if (hasError && results.length === 0) {
+    onOutput({ type: 'exit', data: lastError || 'Query failed', code: 1 });
+    return 1;
+  }
+
+  onOutput({ type: 'exit', data: 'Query complete', code: 0 });
   return 0;
 }
