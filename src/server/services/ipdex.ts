@@ -48,40 +48,10 @@ export async function initIpdex(
   apiKey: string,
   onOutput: OutputCallback
 ): Promise<number> {
-  onOutput({ type: 'stdout', data: 'Initializing ipdex...\n' });
+  onOutput({ type: 'stdout', data: 'Setting API key...\n' });
 
-  return new Promise((resolve, reject) => {
-    try {
-      const proc = spawn(IPDEX_BINARY, ['init'], {
-        env: { ...process.env },
-      });
-
-      // Pipe API key to stdin (ipdex init prompts for it)
-      proc.stdin.write(apiKey + '\n');
-      proc.stdin.end();
-
-      proc.stdout.on('data', (data: Buffer) => {
-        onOutput({ type: 'stdout', data: data.toString() });
-      });
-
-      proc.stderr.on('data', (data: Buffer) => {
-        onOutput({ type: 'stderr', data: data.toString() });
-      });
-
-      proc.on('close', (code) => {
-        const exitCode = code ?? 0;
-        onOutput({ type: 'exit', data: `Process exited with code ${exitCode}`, code: exitCode });
-        resolve(exitCode);
-      });
-
-      proc.on('error', (err) => {
-        onOutput({ type: 'error', data: err.message });
-        reject(err);
-      });
-    } catch (err) {
-      reject(err);
-    }
-  });
+  // Use ipdex config set command to set the API key
+  return runCommand(['config', 'set', '--api-key', apiKey], onOutput);
 }
 
 export async function queryIPs(
