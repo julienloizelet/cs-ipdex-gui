@@ -1,4 +1,7 @@
 import { spawn } from 'child_process';
+import { homedir } from 'os';
+import { join } from 'path';
+import { writeFile, mkdir } from 'fs/promises';
 
 export interface CommandOutput {
   type: 'stdout' | 'stderr' | 'exit' | 'error';
@@ -50,8 +53,25 @@ export async function initIpdex(
 ): Promise<number> {
   onOutput({ type: 'stdout', data: 'Setting API key...\n' });
 
-  // Use ipdex config set command to set the API key
-  return runCommand(['config', 'set', '--api-key', apiKey], onOutput);
+  try {
+    // Create config directory if needed (matches ipdex's configdir.LocalConfig("ipdex"))
+    const configDir = join(homedir(), '.config', 'ipdex');
+    await mkdir(configDir, { recursive: true });
+
+    // Write config file with API key
+    const configPath = join(configDir, '.ipdex.yaml');
+    const configContent = `api_key: ${apiKey}\n`;
+    await writeFile(configPath, configContent);
+
+    onOutput({ type: 'stdout', data: 'API key saved.\n' });
+    onOutput({ type: 'exit', data: 'Configuration complete', code: 0 });
+    return 0;
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    onOutput({ type: 'stderr', data: `Failed to save API key: ${errorMsg}\n` });
+    onOutput({ type: 'exit', data: 'Configuration failed', code: 1 });
+    return 1;
+  }
 }
 
 export async function queryIPs(
