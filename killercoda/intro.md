@@ -16,4 +16,8 @@ Have this ready before clicking Start:
 
 1. **CrowdSec CTI API Key** from [CrowdSec Console](https://app.crowdsec.net/cti-api-keys)
 
-Click **Start** when ready.
+**Click Start when you see this in the terminal:**
+
+```
+ubuntu:~$
+```

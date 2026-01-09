@@ -2,7 +2,7 @@
 
 The environment is being prepared. This takes **1-2 minutes**.
 
-Watch the terminal for progress. When you see **"READY"**, open the GUI:
+Watch the terminal for progress. When you see **"READY"**, open the GUI.
 
 **[Open IPdex GUI]({{TRAFFIC_HOST1_3000}})**
 
