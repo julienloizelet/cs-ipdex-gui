@@ -38,7 +38,7 @@ export function ApiKeyForm({ onSubmit }: ApiKeyFormProps) {
         <p className="text-gray-600 dark:text-gray-400 text-sm">
           Enter your CrowdSec CTI API key to get started. You can get one from{' '}
           <a
-            href="https://app.crowdsec.net/"
+            href="https://app.crowdsec.net/settings/cti-api-keys"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"

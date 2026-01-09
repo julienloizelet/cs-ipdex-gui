@@ -14,7 +14,7 @@ IPdex allows you to:
 
 Have this ready before clicking Start:
 
-1. **CrowdSec CTI API Key** from [CrowdSec Console](https://app.crowdsec.net/cti-api-keys)
+1. **CrowdSec CTI API Key** from [CrowdSec Console](https://app.crowdsec.net/settings/cti-api-keys)
 
 **Click Start when you see this in the terminal:**
 
