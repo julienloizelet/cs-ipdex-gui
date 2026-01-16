@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { initIpdex, createReport } from './services/ipdex.js';
+import { initIpdex, createReport, generateReportJson } from './services/ipdex.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,6 +55,18 @@ io.on('connection', (socket) => {
       socket.emit('output', {
         type: 'error',
         data: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  socket.on('downloadReport', async (reportId: number) => {
+    try {
+      const gzippedData = await generateReportJson(reportId);
+      socket.emit('reportFile', { reportId, data: gzippedData });
+    } catch (error) {
+      socket.emit('output', {
+        type: 'error',
+        data: error instanceof Error ? error.message : 'Failed to generate report',
       });
     }
   });

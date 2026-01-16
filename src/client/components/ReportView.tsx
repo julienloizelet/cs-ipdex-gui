@@ -4,6 +4,7 @@ interface ReportViewProps {
   report: ReportResult;
   onBack: () => void;
   onNewQuery: () => void;
+  onDownload: () => void;
 }
 
 function StatCard({ title, icon, items, colorClass }: {
@@ -43,7 +44,7 @@ function StatCard({ title, icon, items, colorClass }: {
   );
 }
 
-export function ReportView({ report, onBack, onNewQuery }: ReportViewProps) {
+export function ReportView({ report, onBack, onNewQuery, onDownload }: ReportViewProps) {
   const { general, stats } = report;
 
   return (
@@ -178,6 +179,28 @@ export function ReportView({ report, onBack, onNewQuery }: ReportViewProps) {
         items={stats.countries}
         colorClass="bg-green-500/20 text-green-700 dark:text-green-400"
       />
+
+      <div className="mt-6 text-center">
+        <button
+          className="btn btn-secondary inline-flex items-center gap-2"
+          onClick={onDownload}
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+          Download Report
+        </button>
+      </div>
     </div>
   );
 }

@@ -17,7 +17,7 @@ function App() {
   const [pendingIPs, setPendingIPs] = useState<string[]>([]);
   const { theme, toggleTheme } = useTheme();
 
-  const { output, isRunning, init, createReport, clearOutput } = useSocket({
+  const { output, isRunning, init, createReport, downloadReport, clearOutput } = useSocket({
     onInitComplete: (exitCode) => {
       if (exitCode === 0) {
         setStep('ip-input');
@@ -84,6 +84,7 @@ function App() {
             report={report}
             onBack={handleBackToIpInput}
             onNewQuery={handleNewQuery}
+            onDownload={() => downloadReport(report.general.reportId)}
           />
         ) : null;
       default:

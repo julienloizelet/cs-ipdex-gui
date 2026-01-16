@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import { homedir } from 'os';
 import { join } from 'path';
 import { writeFile, mkdir } from 'fs/promises';
+import { gzipSync } from 'zlib';
 
 export interface CommandOutput {
   type: 'stdout' | 'stderr' | 'exit' | 'error';
@@ -306,4 +307,14 @@ export async function createReport(
 
   onOutput({ type: 'exit', data: 'Report complete', code: 0 });
   return 0;
+}
+
+export async function generateReportJson(reportId: number): Promise<Buffer> {
+  const result = await runCommand(['report', 'show', String(reportId), '-o', 'json']);
+
+  if (result.exitCode !== 0) {
+    throw new Error(`Failed to generate report JSON: ${result.stderr || 'Unknown error'}`);
+  }
+
+  return gzipSync(result.stdout);
 }

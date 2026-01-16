@@ -60,6 +60,18 @@ export function useSocket(options: UseSocketOptions = {}) {
       }
     });
 
+    newSocket.on('reportFile', (data: { reportId: number; data: ArrayBuffer }) => {
+      const blob = new Blob([data.data], { type: 'application/gzip' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-${data.reportId}.json.gz`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
     setSocket(newSocket);
 
     return () => {
@@ -97,11 +109,21 @@ export function useSocket(options: UseSocketOptions = {}) {
     [socket, clearOutput]
   );
 
+  const downloadReport = useCallback(
+    (reportId: number) => {
+      if (socket) {
+        socket.emit('downloadReport', reportId);
+      }
+    },
+    [socket]
+  );
+
   return {
     output,
     isRunning,
     init,
     createReport,
+    downloadReport,
     clearOutput,
   };
 }
