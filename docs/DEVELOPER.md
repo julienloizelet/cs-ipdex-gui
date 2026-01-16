@@ -72,21 +72,22 @@ src/
 │   ├── main.tsx           # Entry point
 │   ├── App.tsx            # Main wizard component
 │   ├── index.css          # Tailwind CSS
-│   ├── types.ts           # TypeScript types
+│   ├── types.ts           # TypeScript types (ReportResult, StatItem, etc.)
 │   ├── hooks/
 │   │   ├── useSocket.ts   # WebSocket hook for real-time communication
 │   │   └── useTheme.ts    # Theme (light/dark) management
 │   └── components/
 │       ├── Header.tsx         # App header with theme toggle
-│       ├── ApiKeyForm.tsx     # Step 1: API key input
+│       ├── ApiKeyForm.tsx     # Step 1: API key input + PoV Key checkbox
 │       ├── IpInputForm.tsx    # Step 2: IP addresses input
+│       ├── ConfirmDialog.tsx  # Modal to confirm query before execution
 │       ├── CommandOutput.tsx  # Real-time command output
-│       └── ResultsView.tsx    # IP threat intelligence display
+│       └── ReportView.tsx     # Report display with stats cards
 │
 └── server/                 # Express backend
     ├── index.ts           # Server entry point + WebSocket setup
     └── services/
-        └── ipdex.ts       # ipdex command execution service
+        └── ipdex.ts       # ipdex report creation and parsing service
 ```
 
 ## API Reference
@@ -103,8 +104,8 @@ src/
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `init` | `apiKey: string` | Save API key and test connection |
-| `query` | `ips: string[]` | Query IPs against CrowdSec CTI |
+| `init` | `apiKey: string` | Save API key to config file |
+| `createReport` | `{ ips: string[], isPovKey: boolean }` | Create a report for the given IPs |
 
 **Server → Client:**
 
@@ -113,10 +114,31 @@ src/
 | `output` | `{ type, data, code? }` | Real-time command output |
 
 Output types:
-- `stdout`: Standard output from ipdex
+- `stdout`: Standard output from ipdex (includes JSON results between markers)
 - `stderr`: Error output from ipdex
 - `exit`: Command completed (includes exit code)
 - `error`: Internal error
+
+## Application Workflow
+
+1. **API Key Setup**: User enters CrowdSec CTI API key and optionally checks "Using a PoV Key"
+2. **IP Input**: User enters IP addresses (one per line)
+3. **Confirmation**: Modal asks user to confirm the query (quota warning)
+4. **Report Creation**:
+   - Server writes IPs to `/tmp/ipdex-ips.txt`
+   - Runs `ipdex /tmp/ipdex-ips.txt` (with `-b` flag if PoV key)
+   - Parses output to extract Report ID
+   - Runs `ipdex report show <REPORT_ID>`
+   - Parses text output into structured JSON
+5. **Results Display**: Report displayed with General info card and stats cards:
+   - Top Reputation (Malicious, Suspicious, Unknown)
+   - Top Classifications
+   - Top Behaviors
+   - Top Blocklists
+   - Top CVEs
+   - Top IP Ranges
+   - Top Autonomous Systems
+   - Top Countries
 
 ## Technology Stack
 

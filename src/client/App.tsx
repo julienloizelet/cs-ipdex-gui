@@ -5,36 +5,53 @@ import { Header } from './components/Header';
 import { ApiKeyForm } from './components/ApiKeyForm';
 import { IpInputForm } from './components/IpInputForm';
 import { CommandOutput } from './components/CommandOutput';
-import { ResultsView } from './components/ResultsView';
-import type { WizardStep, IPResult } from './types';
+import { ReportView } from './components/ReportView';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import type { WizardStep, ReportResult } from './types';
 
 function App() {
   const [step, setStep] = useState<WizardStep>('api-key');
-  const [results, setResults] = useState<IPResult[]>([]);
+  const [report, setReport] = useState<ReportResult | null>(null);
+  const [isPovKey, setIsPovKey] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingIPs, setPendingIPs] = useState<string[]>([]);
   const { theme, toggleTheme } = useTheme();
 
-  const { output, isRunning, init, query, clearOutput } = useSocket({
+  const { output, isRunning, init, createReport, clearOutput } = useSocket({
     onInitComplete: (exitCode) => {
       if (exitCode === 0) {
         setStep('ip-input');
       }
     },
-    onQueryComplete: (exitCode, queryResults) => {
-      if (exitCode === 0) {
-        setResults(queryResults);
+    onQueryComplete: (exitCode, reportResult) => {
+      if (exitCode === 0 && reportResult) {
+        setReport(reportResult);
         setStep('results');
       }
     },
   });
 
-  const handleApiKeySubmit = (key: string) => {
+  const handleApiKeySubmit = (key: string, povKey: boolean) => {
+    setIsPovKey(povKey);
     setStep('executing');
     init(key);
   };
 
   const handleIpSubmit = (ips: string[]) => {
+    setPendingIPs(ips);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmQuery = () => {
+    setShowConfirmDialog(false);
     setStep('executing');
-    query(ips);
+    createReport(pendingIPs, isPovKey);
+    setPendingIPs([]);
+  };
+
+  const handleCancelQuery = () => {
+    setShowConfirmDialog(false);
+    setPendingIPs([]);
   };
 
   const handleBackToApiKey = () => {
@@ -49,7 +66,7 @@ function App() {
 
   const handleNewQuery = () => {
     clearOutput();
-    setResults([]);
+    setReport(null);
     setStep('ip-input');
   };
 
@@ -62,13 +79,13 @@ function App() {
       case 'executing':
         return <CommandOutput output={output} isRunning={isRunning} onBack={handleBackToIpInput} />;
       case 'results':
-        return (
-          <ResultsView
-            results={results}
+        return report ? (
+          <ReportView
+            report={report}
             onBack={handleBackToIpInput}
             onNewQuery={handleNewQuery}
           />
-        );
+        ) : null;
       default:
         return null;
     }
@@ -78,6 +95,13 @@ function App() {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header theme={theme} onToggleTheme={toggleTheme} />
       <main className="py-8 px-4">{renderStep()}</main>
+      {showConfirmDialog && (
+        <ConfirmDialog
+          ipCount={pendingIPs.length}
+          onCancel={handleCancelQuery}
+          onConfirm={handleConfirmQuery}
+        />
+      )}
     </div>
   );
 }

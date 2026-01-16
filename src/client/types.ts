@@ -4,13 +4,42 @@ export interface WizardState {
   step: WizardStep;
   apiKey: string;
   ips: string[];
-  results: IPResult[];
+  results: ReportResult | null;
 }
 
 export interface CommandOutput {
   type: 'stdout' | 'stderr' | 'exit' | 'error';
   data: string;
   code?: number;
+}
+
+export interface StatItem {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface ReportResult {
+  general: {
+    reportId: number;
+    reportName: string;
+    creationDate: string;
+    filePath: string;
+    sha256: string;
+    numberOfIPs: number;
+    knownIPs: { count: number; percentage: number };
+    inBlocklist: { count: number; percentage: number };
+  };
+  stats: {
+    reputation: StatItem[];
+    classifications: StatItem[];
+    behaviors: StatItem[];
+    blocklists: StatItem[];
+    cves: StatItem[];
+    ipRanges: StatItem[];
+    autonomousSystems: StatItem[];
+    countries: StatItem[];
+  };
 }
 
 export interface IPResult {

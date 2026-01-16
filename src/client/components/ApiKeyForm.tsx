@@ -1,16 +1,17 @@
 import { useState } from 'react';
 
 interface ApiKeyFormProps {
-  onSubmit: (apiKey: string) => void;
+  onSubmit: (apiKey: string, isPovKey: boolean) => void;
 }
 
 export function ApiKeyForm({ onSubmit }: ApiKeyFormProps) {
   const [apiKey, setApiKey] = useState('');
+  const [isPovKey, setIsPovKey] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (apiKey.trim()) {
-      onSubmit(apiKey.trim());
+      onSubmit(apiKey.trim(), isPovKey);
     }
   };
 
@@ -63,6 +64,23 @@ export function ApiKeyForm({ onSubmit }: ApiKeyFormProps) {
             onChange={(e) => setApiKey(e.target.value)}
             autoFocus
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isPovKey}
+              onChange={(e) => setIsPovKey(e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Using a PoV Key
+            </span>
+          </label>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
+            Check this if you have a Proof of Value key with higher rate limits
+          </p>
         </div>
 
         <button

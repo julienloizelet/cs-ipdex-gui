@@ -11,34 +11,70 @@ export interface CommandOutput {
 
 export type OutputCallback = (output: CommandOutput) => void;
 
+export interface StatItem {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface ReportResult {
+  general: {
+    reportId: number;
+    reportName: string;
+    creationDate: string;
+    filePath: string;
+    sha256: string;
+    numberOfIPs: number;
+    knownIPs: { count: number; percentage: number };
+    inBlocklist: { count: number; percentage: number };
+  };
+  stats: {
+    reputation: StatItem[];
+    classifications: StatItem[];
+    behaviors: StatItem[];
+    blocklists: StatItem[];
+    cves: StatItem[];
+    ipRanges: StatItem[];
+    autonomousSystems: StatItem[];
+    countries: StatItem[];
+  };
+}
+
 const IPDEX_BINARY = process.env.IPDEX_BINARY || 'ipdex';
+const IPDEX_FILE_PATH = '/tmp/ipdex-ips.txt';
 
 function runCommand(
   args: string[],
-  onOutput: OutputCallback
-): Promise<number> {
+  onOutput?: OutputCallback
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     try {
       const proc = spawn(IPDEX_BINARY, args, {
         env: { ...process.env },
       });
 
+      let stdout = '';
+      let stderr = '';
+
       proc.stdout.on('data', (data: Buffer) => {
-        onOutput({ type: 'stdout', data: data.toString() });
+        const str = data.toString();
+        stdout += str;
+        onOutput?.({ type: 'stdout', data: str });
       });
 
       proc.stderr.on('data', (data: Buffer) => {
-        onOutput({ type: 'stderr', data: data.toString() });
+        const str = data.toString();
+        stderr += str;
+        onOutput?.({ type: 'stderr', data: str });
       });
 
       proc.on('close', (code) => {
         const exitCode = code ?? 0;
-        onOutput({ type: 'exit', data: `Process exited with code ${exitCode}`, code: exitCode });
-        resolve(exitCode);
+        resolve({ exitCode, stdout, stderr });
       });
 
       proc.on('error', (err) => {
-        onOutput({ type: 'error', data: err.message });
+        onOutput?.({ type: 'error', data: err.message });
         reject(err);
       });
     } catch (err) {
@@ -74,8 +110,137 @@ export async function initIpdex(
   }
 }
 
-export async function queryIPs(
+function parseCountWithPercentage(text: string): { count: number; percentage: number } {
+  // Parse "3 (100%)" format
+  const match = text.match(/(\d+)\s*\((\d+)%\)/);
+  if (match) {
+    return { count: parseInt(match[1], 10), percentage: parseInt(match[2], 10) };
+  }
+  return { count: 0, percentage: 0 };
+}
+
+function parseStatItems(section: string): StatItem[] {
+  const items: StatItem[] = [];
+  const lines = section.split('\n');
+
+  for (const line of lines) {
+    // Match lines like "     Malicious                                               2 (67%)"
+    const match = line.match(/^\s+(.+?)\s{2,}(\d+)\s+\((\d+)%\)/);
+    if (match) {
+      items.push({
+        label: match[1].trim(),
+        count: parseInt(match[2], 10),
+        percentage: parseInt(match[3], 10),
+      });
+    }
+  }
+
+  return items;
+}
+
+function parseReportOutput(output: string): ReportResult {
+  const result: ReportResult = {
+    general: {
+      reportId: 0,
+      reportName: '',
+      creationDate: '',
+      filePath: '',
+      sha256: '',
+      numberOfIPs: 0,
+      knownIPs: { count: 0, percentage: 0 },
+      inBlocklist: { count: 0, percentage: 0 },
+    },
+    stats: {
+      reputation: [],
+      classifications: [],
+      behaviors: [],
+      blocklists: [],
+      cves: [],
+      ipRanges: [],
+      autonomousSystems: [],
+      countries: [],
+    },
+  };
+
+  // Parse General section
+  const reportIdMatch = output.match(/Report ID\s+(\d+)/);
+  if (reportIdMatch) {
+    result.general.reportId = parseInt(reportIdMatch[1], 10);
+  }
+
+  const reportNameMatch = output.match(/Report Name\s+(.+)/);
+  if (reportNameMatch) {
+    result.general.reportName = reportNameMatch[1].trim();
+  }
+
+  const creationDateMatch = output.match(/Creation Date\s+(.+)/);
+  if (creationDateMatch) {
+    result.general.creationDate = creationDateMatch[1].trim();
+  }
+
+  const filePathMatch = output.match(/File path\s+(.+)/);
+  if (filePathMatch) {
+    result.general.filePath = filePathMatch[1].trim();
+  }
+
+  const sha256Match = output.match(/SHA256\s+(\w+)/);
+  if (sha256Match) {
+    result.general.sha256 = sha256Match[1].trim();
+  }
+
+  const numberOfIPsMatch = output.match(/Number of IPs\s+(\d+)/);
+  if (numberOfIPsMatch) {
+    result.general.numberOfIPs = parseInt(numberOfIPsMatch[1], 10);
+  }
+
+  const knownIPsMatch = output.match(/Number of known IPs\s+(.+)/);
+  if (knownIPsMatch) {
+    result.general.knownIPs = parseCountWithPercentage(knownIPsMatch[1]);
+  }
+
+  const inBlocklistMatch = output.match(/Number of IPs in Blocklist\s+(.+)/);
+  if (inBlocklistMatch) {
+    result.general.inBlocklist = parseCountWithPercentage(inBlocklistMatch[1]);
+  }
+
+  // Parse Stats sections by emoji headers
+  const sections = [
+    { emoji: '🌟', key: 'reputation' as const },
+    { emoji: '🗂️', key: 'classifications' as const },
+    { emoji: '🤖', key: 'behaviors' as const },
+    { emoji: '⛔', key: 'blocklists' as const },
+    { emoji: '💥', key: 'cves' as const },
+    { emoji: '🌐', key: 'ipRanges' as const },
+    { emoji: '🛰️', key: 'autonomousSystems' as const },
+    { emoji: '🌎', key: 'countries' as const },
+  ];
+
+  for (let i = 0; i < sections.length; i++) {
+    const { emoji, key } = sections[i];
+    const nextEmoji = sections[i + 1]?.emoji;
+
+    // Find the section between this emoji and the next
+    const startIdx = output.indexOf(emoji);
+    if (startIdx === -1) { continue; }
+
+    let endIdx = output.length;
+    if (nextEmoji) {
+      const nextIdx = output.indexOf(nextEmoji, startIdx + 1);
+      if (nextIdx !== -1) {
+        endIdx = nextIdx;
+      }
+    }
+
+    const sectionText = output.slice(startIdx, endIdx);
+    result.stats[key] = parseStatItems(sectionText);
+  }
+
+  return result;
+}
+
+export async function createReport(
   ips: string[],
+  isPovKey: boolean,
   onOutput: OutputCallback
 ): Promise<number> {
   if (ips.length === 0) {
@@ -83,63 +248,62 @@ export async function queryIPs(
     return 1;
   }
 
-  // Query each IP with JSON output
-  const results: Record<string, unknown>[] = [];
-  let hasError = false;
-  let lastError = '';
-
-  for (const ip of ips) {
-    const trimmedIP = ip.trim();
-    if (!trimmedIP) { continue; }
-
-    onOutput({ type: 'stdout', data: `Querying ${trimmedIP}...\n` });
-
-    const ipResults: string[] = [];
-    let ipError = '';
-    const exitCode = await runCommand([trimmedIP, '-o', 'json'], (output) => {
-      if (output.type === 'stdout') {
-        ipResults.push(output.data);
-      } else if (output.type === 'stderr') {
-        ipError += output.data;
-        onOutput(output);
-      }
-    });
-
-    if (exitCode !== 0) {
-      hasError = true;
-      // Capture error from stdout if stderr is empty (some errors go to stdout)
-      const errorMsg = ipError || ipResults.join('');
-      lastError = errorMsg;
-      // Show the error to the user
-      if (!ipError && errorMsg) {
-        onOutput({ type: 'stderr', data: errorMsg });
-      }
-      // Don't continue if it's an API key error (affects all queries)
-      if (errorMsg.toLowerCase().includes('api key') || errorMsg.toLowerCase().includes('unauthorized') || errorMsg.toLowerCase().includes('invalid')) {
-        onOutput({ type: 'exit', data: 'Query failed', code: exitCode });
-        return exitCode;
-      }
-    } else if (ipResults.length > 0) {
-      try {
-        const jsonData = JSON.parse(ipResults.join(''));
-        results.push(jsonData);
-      } catch {
-        onOutput({ type: 'stderr', data: `Failed to parse result for ${trimmedIP}\n` });
-      }
-    }
+  // Write IPs to temporary file
+  onOutput({ type: 'stdout', data: `Writing ${ips.length} IPs to ${IPDEX_FILE_PATH}...\n` });
+  try {
+    const ipContent = ips.map(ip => ip.trim()).filter(ip => ip.length > 0).join('\n');
+    await writeFile(IPDEX_FILE_PATH, ipContent);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    onOutput({ type: 'stderr', data: `Failed to write IP file: ${errorMsg}\n` });
+    onOutput({ type: 'exit', data: 'Report creation failed', code: 1 });
+    return 1;
   }
+
+  // Run ipdex with the file
+  const args = [IPDEX_FILE_PATH];
+  if (isPovKey) {
+    args.push('-b');
+  }
+
+  onOutput({ type: 'stdout', data: `Running ipdex ${args.join(' ')}...\n` });
+
+  const createResult = await runCommand(args, onOutput);
+
+  if (createResult.exitCode !== 0) {
+    onOutput({ type: 'exit', data: 'Report creation failed', code: createResult.exitCode });
+    return createResult.exitCode;
+  }
+
+  // Extract Report ID from output
+  const reportIdMatch = createResult.stdout.match(/Report ID\s+(\d+)/);
+  if (!reportIdMatch) {
+    onOutput({ type: 'stderr', data: 'Failed to extract Report ID from output\n' });
+    onOutput({ type: 'exit', data: 'Report creation failed', code: 1 });
+    return 1;
+  }
+
+  const reportId = reportIdMatch[1];
+  onOutput({ type: 'stdout', data: `\nReport created with ID: ${reportId}\n` });
+  onOutput({ type: 'stdout', data: `Running ipdex report show ${reportId}...\n\n` });
+
+  // Run ipdex report show
+  const showResult = await runCommand(['report', 'show', reportId], onOutput);
+
+  if (showResult.exitCode !== 0) {
+    onOutput({ type: 'exit', data: 'Failed to show report', code: showResult.exitCode });
+    return showResult.exitCode;
+  }
+
+  // Parse the report output
+  const report = parseReportOutput(showResult.stdout);
 
   // Send final results as JSON
   onOutput({
     type: 'stdout',
-    data: `\n---RESULTS_JSON---\n${JSON.stringify(results, null, 2)}\n---END_RESULTS---\n`
+    data: `\n---RESULTS_JSON---\n${JSON.stringify(report, null, 2)}\n---END_RESULTS---\n`
   });
 
-  if (hasError && results.length === 0) {
-    onOutput({ type: 'exit', data: lastError || 'Query failed', code: 1 });
-    return 1;
-  }
-
-  onOutput({ type: 'exit', data: 'Query complete', code: 0 });
+  onOutput({ type: 'exit', data: 'Report complete', code: 0 });
   return 0;
 }

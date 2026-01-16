@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { initIpdex, queryIPs } from './services/ipdex.js';
+import { initIpdex, createReport } from './services/ipdex.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,9 +46,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('query', async (ips: string[]) => {
+  socket.on('createReport', async (data: { ips: string[]; isPovKey: boolean }) => {
     try {
-      await queryIPs(ips, (output) => {
+      await createReport(data.ips, data.isPovKey, (output) => {
         socket.emit('output', output);
       });
     } catch (error) {

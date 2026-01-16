@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { CommandOutput, IPResult } from '../types';
+import type { CommandOutput, ReportResult } from '../types';
 
 interface UseSocketOptions {
   onInitComplete?: (exitCode: number) => void;
-  onQueryComplete?: (exitCode: number, results: IPResult[]) => void;
+  onQueryComplete?: (exitCode: number, report: ReportResult | null) => void;
 }
 
 export function useSocket(options: UseSocketOptions = {}) {
@@ -12,8 +12,8 @@ export function useSocket(options: UseSocketOptions = {}) {
   const [output, setOutput] = useState<CommandOutput[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const outputBufferRef = useRef<string>('');
-  const operationRef = useRef<'init' | 'query' | null>(null);
-  const resultsRef = useRef<IPResult[]>([]);
+  const operationRef = useRef<'init' | 'createReport' | null>(null);
+  const reportRef = useRef<ReportResult | null>(null);
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
@@ -40,9 +40,9 @@ export function useSocket(options: UseSocketOptions = {}) {
           const jsonStr = outputBufferRef.current.slice(startIdx, endIdx).trim();
 
           try {
-            resultsRef.current = JSON.parse(jsonStr);
+            reportRef.current = JSON.parse(jsonStr);
           } catch {
-            console.error('Failed to parse results JSON');
+            console.error('Failed to parse report JSON');
           }
         }
       }
@@ -53,8 +53,8 @@ export function useSocket(options: UseSocketOptions = {}) {
 
         if (operationRef.current === 'init') {
           optionsRef.current.onInitComplete?.(exitCode);
-        } else if (operationRef.current === 'query') {
-          optionsRef.current.onQueryComplete?.(exitCode, resultsRef.current);
+        } else if (operationRef.current === 'createReport') {
+          optionsRef.current.onQueryComplete?.(exitCode, reportRef.current);
         }
         operationRef.current = null;
       }
@@ -70,7 +70,7 @@ export function useSocket(options: UseSocketOptions = {}) {
   const clearOutput = useCallback(() => {
     setOutput([]);
     outputBufferRef.current = '';
-    resultsRef.current = [];
+    reportRef.current = null;
   }, []);
 
   const init = useCallback(
@@ -85,13 +85,13 @@ export function useSocket(options: UseSocketOptions = {}) {
     [socket, clearOutput]
   );
 
-  const query = useCallback(
-    (ips: string[]) => {
+  const createReport = useCallback(
+    (ips: string[], isPovKey: boolean) => {
       if (socket) {
         clearOutput();
-        operationRef.current = 'query';
+        operationRef.current = 'createReport';
         setIsRunning(true);
-        socket.emit('query', ips);
+        socket.emit('createReport', { ips, isPovKey });
       }
     },
     [socket, clearOutput]
@@ -101,7 +101,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     output,
     isRunning,
     init,
-    query,
+    createReport,
     clearOutput,
   };
 }
