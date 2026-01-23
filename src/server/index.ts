@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { initIpdex, createReport, generateReportJson } from './services/ipdex.js';
+import { createReport, generateDownload, type CTIObject, type ReportResult } from './services/cti/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,40 +29,58 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Per-socket session state
+interface SessionState {
+  apiKey: string;
+  report: ReportResult | null;
+  rawResults: CTIObject[];
+}
+
+const sessions = new Map<string, SessionState>();
+
 // Socket.IO handlers
 io.on('connection', (socket) => {
   console.log('Client connected');
 
-  socket.on('init', async (apiKey: string) => {
-    try {
-      await initIpdex(apiKey, (output) => {
-        socket.emit('output', output);
-      });
-    } catch (error) {
-      socket.emit('output', {
-        type: 'error',
-        data: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+  socket.on('init', (apiKey: string) => {
+    sessions.set(socket.id, { apiKey, report: null, rawResults: [] });
+    socket.emit('output', { type: 'stdout', data: 'API key saved.\n' });
+    socket.emit('output', { type: 'exit', data: 'Configuration complete', code: 0 });
   });
 
   socket.on('createReport', async (data: { ips: string[]; isPovKey: boolean }) => {
+    const session = sessions.get(socket.id);
+    if (!session) {
+      socket.emit('output', { type: 'error', data: 'No API key configured. Please set up your API key first.' });
+      return;
+    }
+
     try {
-      await createReport(data.ips, data.isPovKey, (output) => {
+      const { report, raw } = await createReport(session.apiKey, data.ips, data.isPovKey, (output) => {
         socket.emit('output', output);
       });
+      session.report = report;
+      session.rawResults = raw;
     } catch (error) {
-      socket.emit('output', {
-        type: 'error',
-        data: error instanceof Error ? error.message : 'Unknown error',
-      });
+      if (!(error instanceof Error && error.message === 'No IPs provided')) {
+        socket.emit('output', { type: 'exit', data: 'Report creation failed', code: 1 });
+      }
     }
   });
 
-  socket.on('downloadReport', async (reportId: number) => {
+  socket.on('downloadReport', () => {
+    const session = sessions.get(socket.id);
+    if (!session || !session.report || session.rawResults.length === 0) {
+      socket.emit('output', {
+        type: 'error',
+        data: 'No report data available for download.',
+      });
+      return;
+    }
+
     try {
-      const gzippedData = await generateReportJson(reportId);
-      socket.emit('reportFile', { reportId, data: gzippedData });
+      const archive = generateDownload(session.report, session.rawResults);
+      socket.emit('reportFile', { data: archive });
     } catch (error) {
       socket.emit('output', {
         type: 'error',
@@ -72,6 +90,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    sessions.delete(socket.id);
     console.log('Client disconnected');
   });
 });

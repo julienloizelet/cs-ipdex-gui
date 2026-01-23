@@ -60,12 +60,12 @@ export function useSocket(options: UseSocketOptions = {}) {
       }
     });
 
-    newSocket.on('reportFile', (data: { reportId: number; data: ArrayBuffer }) => {
+    newSocket.on('reportFile', (data: { data: ArrayBuffer }) => {
       const blob = new Blob([data.data], { type: 'application/gzip' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-${data.reportId}.json.gz`;
+      a.download = `cti-report.tar.gz`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -110,9 +110,9 @@ export function useSocket(options: UseSocketOptions = {}) {
   );
 
   const downloadReport = useCallback(
-    (reportId: number) => {
+    () => {
       if (socket) {
-        socket.emit('downloadReport', reportId);
+        socket.emit('downloadReport');
       }
     },
     [socket]

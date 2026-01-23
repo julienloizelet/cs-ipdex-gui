@@ -51,7 +51,7 @@ export function ReportView({ report, onBack, onNewQuery, onDownload }: ReportVie
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Report: {general.reportName}
+          CTI Report
         </h2>
         <div className="flex gap-3">
           <button className="btn btn-secondary" onClick={onBack}>
@@ -67,31 +67,11 @@ export function ReportView({ report, onBack, onNewQuery, onDownload }: ReportVie
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           General Information
         </h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-gray-500 uppercase mb-1">Report ID</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 font-mono">
-              {general.reportId}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase mb-1">Creation Date</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              {general.creationDate}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-xs text-gray-500 uppercase mb-1">File Path</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 font-mono truncate">
-              {general.filePath}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-xs text-gray-500 uppercase mb-1">SHA256</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 font-mono text-xs truncate">
-              {general.sha256}
-            </p>
-          </div>
+        <div className="mb-2">
+          <p className="text-xs text-gray-500 uppercase mb-1">Date</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {new Date(general.creationDate).toLocaleString()}
+          </p>
         </div>
 
         <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">

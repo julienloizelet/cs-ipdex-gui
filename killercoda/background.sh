@@ -16,17 +16,12 @@ apt-get install -y nodejs
 node --version
 npm --version
 
-# Download and install ipdex binary
-echo "Installing ipdex..."
-curl -fsSL https://github.com/crowdsecurity/ipdex/releases/download/v0.0.12/ipdex_linux_amd64 -o /usr/local/bin/ipdex
-chmod +x /usr/local/bin/ipdex
-ipdex --version
-
 # Clone and build the GUI
 echo "Setting up IPdex GUI..."
 cd /root
 git clone https://github.com/julienloizelet/cs-ipdex-gui.git
 cd /root/cs-ipdex-gui
+git checkout feat/full-js
 npm install
 npm run build
 

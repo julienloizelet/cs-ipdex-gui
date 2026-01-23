@@ -1,12 +1,12 @@
 # Developer Guide
 
-This document provides instructions for setting up and developing the CrowdSec IPdex GUI.
+This document provides instructions for setting up and developing the CrowdSec CTI GUI.
 
 ## Prerequisites
 
 - Node.js 18+
 - npm
-- `ipdex` binary in your PATH (download from [releases](https://github.com/crowdsecurity/ipdex/releases))
+- A CrowdSec CTI API key ([get one here](https://app.crowdsec.net/cti-api-keys))
 
 ## Project Setup
 
@@ -17,17 +17,6 @@ cd cs-ipdex-gui
 
 # Install dependencies
 npm install
-```
-
-Ensure `ipdex` is available in your PATH:
-
-```bash
-# Download and install ipdex
-curl -fsSL https://github.com/crowdsecurity/ipdex/releases/download/v0.0.12/ipdex_linux_amd64 -o /usr/local/bin/ipdex
-chmod +x /usr/local/bin/ipdex
-
-# Verify installation
-ipdex version
 ```
 
 ## Development
@@ -85,9 +74,13 @@ src/
 │       └── ReportView.tsx     # Report display with stats cards
 │
 └── server/                 # Express backend
-    ├── index.ts           # Server entry point + WebSocket setup
+    ├── index.ts           # Server entry point + WebSocket setup + session state
     └── services/
-        └── ipdex.ts       # ipdex report creation and parsing service
+        └── cti/
+            ├── index.ts   # Barrel exports
+            ├── types.ts   # CTI API response types
+            ├── client.ts  # HTTP client (fetch with retry/backoff)
+            └── report.ts  # Report generation + stats aggregation
 ```
 
 ## API Reference
@@ -104,19 +97,21 @@ src/
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `init` | `apiKey: string` | Save API key to config file |
-| `createReport` | `{ ips: string[], isPovKey: boolean }` | Create a report for the given IPs |
+| `init` | `apiKey: string` | Store API key in session |
+| `createReport` | `{ ips: string[], isPovKey: boolean }` | Query IPs and generate report |
+| `downloadReport` | _(none)_ | Download raw CTI data as gzipped JSON |
 
 **Server → Client:**
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `output` | `{ type, data, code? }` | Real-time command output |
+| `output` | `{ type, data, code? }` | Real-time progress output |
+| `reportFile` | `{ data: ArrayBuffer }` | Gzipped JSON file for download |
 
 Output types:
-- `stdout`: Standard output from ipdex (includes JSON results between markers)
-- `stderr`: Error output from ipdex
-- `exit`: Command completed (includes exit code)
+- `stdout`: Progress messages and JSON results (between `---RESULTS_JSON---` markers)
+- `stderr`: Error messages (API errors, rate limits)
+- `exit`: Operation completed (includes exit code)
 - `error`: Internal error
 
 ## Application Workflow
@@ -125,13 +120,12 @@ Output types:
 2. **IP Input**: User enters IP addresses (one per line)
 3. **Confirmation**: Modal asks user to confirm the query (quota warning)
 4. **Report Creation**:
-   - Server writes IPs to `/tmp/ipdex-ips.txt`
-   - Runs `ipdex /tmp/ipdex-ips.txt` (with `-b` flag if PoV key)
-   - Parses output to extract Report ID
-   - Runs `ipdex report show <REPORT_ID>`
-   - Parses text output into structured JSON
-5. **Results Display**: Report displayed with General info card and stats cards:
-   - Top Reputation (Malicious, Suspicious, Unknown)
+   - PoV key: Server queries CTI API in batches of 20 via `GET /smoke?ips=...`
+   - Community key: Server queries IPs one at a time via `GET /smoke/{ip}` with rate limiting
+   - Progress is streamed to the client in real-time
+   - Results are aggregated into statistics
+5. **Results Display**: Report displayed with summary stats and cards:
+   - Top Reputation (Malicious, Suspicious, Known, Safe)
    - Top Classifications
    - Top Behaviors
    - Top Blocklists
@@ -139,6 +133,19 @@ Output types:
    - Top IP Ranges
    - Top Autonomous Systems
    - Top Countries
+6. **Download**: Exports raw CTI API responses as gzipped JSON
+
+## CTI API Integration
+
+The server calls the CrowdSec CTI API directly (no external binary needed):
+
+- **Base URL**: `https://cti.api.crowdsec.net/v2`
+- **Auth**: `x-api-key` header
+- **Endpoints used**:
+  - `GET /smoke/{ip}` — Single IP lookup (community keys)
+  - `GET /smoke?ips=ip1,ip2,...` — Batch lookup (PoV/partner keys)
+- **Rate limiting**: 429 responses are retried with exponential backoff (up to 3 retries)
+- **Error handling**: 403 (invalid key), 404 (unknown IP, counted as "not found")
 
 ## Technology Stack
 
@@ -146,6 +153,7 @@ Output types:
 - **Backend**: Express.js, Socket.IO, TypeScript
 - **Build**: Vite (frontend), tsc (backend)
 - **Runtime**: Node.js 18+
+- **HTTP Client**: Native `fetch` (no external dependencies)
 
 ## KillerCoda Scenario
 
@@ -158,7 +166,7 @@ killercoda/
 ├── index.json      # Scenario configuration
 ├── intro.md        # Introduction page (prerequisites)
 ├── finish.md       # Setup page (shown after Start)
-├── background.sh   # Installs Node.js, ipdex, and GUI
+├── background.sh   # Installs Node.js and builds the GUI
 └── foreground.sh   # Shows setup progress in terminal
 ```
 

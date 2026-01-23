@@ -1,2 +1,3 @@
 # cs-ipdex-gui
-GUI for ipdex tool
+
+GUI for CrowdSec CTI IP lookup. Queries the CrowdSec CTI API directly from Node.js and displays aggregated threat intelligence reports.

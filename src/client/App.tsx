@@ -84,7 +84,7 @@ function App() {
             report={report}
             onBack={handleBackToIpInput}
             onNewQuery={handleNewQuery}
-            onDownload={() => downloadReport(report.general.reportId)}
+            onDownload={() => downloadReport()}
           />
         ) : null;
       default:

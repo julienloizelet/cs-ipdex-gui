@@ -21,11 +21,7 @@ export interface StatItem {
 
 export interface ReportResult {
   general: {
-    reportId: number;
-    reportName: string;
     creationDate: string;
-    filePath: string;
-    sha256: string;
     numberOfIPs: number;
     knownIPs: { count: number; percentage: number };
     inBlocklist: { count: number; percentage: number };
