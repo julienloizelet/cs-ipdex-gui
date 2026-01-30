@@ -162,12 +162,12 @@ export async function createReport(
   isPovKey: boolean,
   onOutput: OutputCallback
 ): Promise<{ report: ReportResult; raw: CTIObject[] }> {
-  if (ips.length === 0) {
+  const cleanIPs = ips.map((ip) => ip.trim()).filter((ip) => ip.length > 0);
+
+  if (cleanIPs.length === 0) {
     onOutput({ type: 'error', data: 'No IPs provided' });
     throw new Error('No IPs provided');
   }
-
-  const cleanIPs = ips.map((ip) => ip.trim()).filter((ip) => ip.length > 0);
   onOutput({ type: 'stdout', data: `Querying ${cleanIPs.length} IPs against CrowdSec CTI...\n` });
 
   let results: CTIObject[];
