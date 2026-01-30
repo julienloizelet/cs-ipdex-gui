@@ -21,6 +21,9 @@ export function useSocket(options: UseSocketOptions = {}) {
     const newSocket = io();
 
     newSocket.on('output', (data: CommandOutput) => {
+      // Ignore events from cancelled/completed operations
+      if (operationRef.current === null) return;
+
       setOutput((prev) => [...prev, data]);
 
       // Parse results from output
@@ -83,6 +86,8 @@ export function useSocket(options: UseSocketOptions = {}) {
     setOutput([]);
     outputBufferRef.current = '';
     reportRef.current = null;
+    operationRef.current = null;
+    setIsRunning(false);
   }, []);
 
   const init = useCallback(
