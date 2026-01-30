@@ -13,7 +13,7 @@ function csvRow(fields: string[]): string {
 }
 
 function stripTimezone(dateStr: string): string {
-  return dateStr.split('+')[0];
+  return dateStr.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
 }
 
 function buildReportCsv(report: ReportResult): string {
