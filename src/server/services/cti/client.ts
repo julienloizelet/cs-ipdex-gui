@@ -1,6 +1,6 @@
 import type { CTIObject, BatchResponse } from './types.js';
 
-const BASE_URL = 'https://cti.api.crowdsec.net/v2';
+const BASE_URL = process.env.CTI_BASE_URL || 'https://cti.api.crowdsec.net/v2';
 const USER_AGENT = 'cs-ipdex-gui/1.0';
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 2000;

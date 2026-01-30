@@ -24,5 +24,10 @@ npm-debug.log*
 tmp/
 *.tmp
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
 # Claude
 .claude/*.local*
