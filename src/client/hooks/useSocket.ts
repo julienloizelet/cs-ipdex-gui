@@ -22,7 +22,7 @@ export function useSocket(options: UseSocketOptions = {}) {
 
     newSocket.on('output', (data: CommandOutput) => {
       // Ignore events from cancelled/completed operations
-      if (operationRef.current === null) return;
+      if (operationRef.current === null) {return;}
 
       setOutput((prev) => [...prev, data]);
 
