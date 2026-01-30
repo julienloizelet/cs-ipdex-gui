@@ -32,15 +32,19 @@ async function fetchWithRetry(
       },
     });
 
-    if (response.status === 429 && attempt < retries) {
-      const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
-      await sleep(delay);
-      continue;
+    if (response.status === 429) {
+      if (attempt < retries) {
+        const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+        await sleep(delay);
+        continue;
+      }
+      throw new CTIError('Rate limit exceeded after retries', 429);
     }
 
     return response;
   }
 
+  // Unreachable: the loop always returns or throws
   throw new CTIError('Rate limit exceeded after retries', 429);
 }
 
