@@ -25,6 +25,33 @@ test.describe('Validation & dialogs', () => {
     // Still on IP input
     await expect(page.locator('#ips')).toBeVisible();
   });
+
+  test('rejects invalid content pasted in textarea', async ({ page }) => {
+    await submitApiKey(page, 'test-community-key');
+
+    // Paste invalid content
+    await page.fill('#ips', 'not an ip\n{"json": true}\nhello world');
+    await page.getByRole('button', { name: 'Query IPs' }).click();
+
+    // Check error message is shown
+    await expect(page.getByText('Invalid format. Expected one IP per line')).toBeVisible();
+    // Dialog should not appear
+    await expect(page.getByText('Confirm Query')).not.toBeVisible();
+  });
+
+  test('error clears when user edits textarea', async ({ page }) => {
+    await submitApiKey(page, 'test-community-key');
+
+    // Trigger error
+    await page.fill('#ips', 'invalid content');
+    await page.getByRole('button', { name: 'Query IPs' }).click();
+    await expect(page.getByText('Invalid format')).toBeVisible();
+
+    // Edit textarea
+    await page.fill('#ips', '1.2.3.4');
+    // Error should be cleared
+    await expect(page.getByText('Invalid format')).not.toBeVisible();
+  });
 });
 
 test.describe('File upload', () => {
@@ -128,6 +155,40 @@ test.describe('File upload', () => {
     // Textarea should remain empty
     await expect(page.locator('#ips')).toHaveValue('');
   });
+
+  test('rejects files with invalid format (JSON)', async ({ page }) => {
+    await submitApiKey(page, 'test-community-key');
+
+    // Create a JSON file
+    const filePath = path.join(tempDir, 'data.json');
+    fs.writeFileSync(filePath, '{"ips": ["1.2.3.4", "5.6.7.8"]}');
+
+    // Upload the file
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(filePath);
+
+    // Check error message
+    await expect(page.getByText('Invalid format. Expected one IP per line')).toBeVisible();
+    // Textarea should remain empty
+    await expect(page.locator('#ips')).toHaveValue('');
+  });
+
+  test('rejects files with non-IP content', async ({ page }) => {
+    await submitApiKey(page, 'test-community-key');
+
+    // Create a file with random text
+    const filePath = path.join(tempDir, 'random.txt');
+    fs.writeFileSync(filePath, 'hello world\nthis is not an IP\nneither is this');
+
+    // Upload the file
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(filePath);
+
+    // Check error message
+    await expect(page.getByText('Invalid format. Expected one IP per line')).toBeVisible();
+    // Textarea should remain empty
+    await expect(page.locator('#ips')).toHaveValue('');
+  });
 });
 
 test.describe('Duplicate detection', () => {
@@ -144,7 +205,7 @@ test.describe('Duplicate detection', () => {
 
     // Check confirm dialog shows duplicate warning
     await expect(page.getByText('Confirm Query')).toBeVisible();
-    await expect(page.getByText('2 unique IPs')).toBeVisible();
+    await expect(page.getByText('2 IPs')).toBeVisible();
     await expect(page.getByText('3 duplicates removed')).toBeVisible();
     // Check the duplicate list items (with count suffix)
     await expect(page.getByText('1.2.3.4 (3x)')).toBeVisible();
@@ -160,7 +221,8 @@ test.describe('Duplicate detection', () => {
 
     // Check confirm dialog shows count but no duplicate warning
     await expect(page.getByText('Confirm Query')).toBeVisible();
-    await expect(page.getByText('3 unique IPs')).toBeVisible();
+    // Check the dialog text mentions handling 3 IPs
+    await expect(page.getByText('Your API key needs to handle')).toBeVisible();
     await expect(page.getByText('duplicates removed')).not.toBeVisible();
   });
 

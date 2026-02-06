@@ -41,9 +41,36 @@ function isBinaryContent(bytes: Uint8Array): boolean {
   return false;
 }
 
+// Simple IP address pattern (IPv4 or IPv6)
+const IP_PATTERN = /^(?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-fA-F0-9:]+:+)+[a-fA-F0-9]+)$/;
+
+function validateIpListFormat(content: string): { valid: boolean; invalidLines: string[] } {
+  const lines = content.split('\n');
+  const invalidLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Skip empty lines
+    if (trimmed.length === 0) {
+      continue;
+    }
+    // Check if line looks like an IP
+    if (!IP_PATTERN.test(trimmed)) {
+      invalidLines.push(trimmed.length > 30 ? trimmed.substring(0, 30) + '...' : trimmed);
+      // Stop after finding 3 invalid lines
+      if (invalidLines.length >= 3) {
+        break;
+      }
+    }
+  }
+
+  return { valid: invalidLines.length === 0, invalidLines };
+}
+
 export function IpInputForm({ onSubmit, onBack }: IpInputFormProps) {
   const [ipText, setIpText] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
+  const [inputError, setInputError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const clearFileInput = () => {
@@ -52,14 +79,28 @@ export function IpInputForm({ onSubmit, onBack }: IpInputFormProps) {
     }
   };
 
+  const clearErrors = () => {
+    setFileError(null);
+    setInputError(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     const allIps = ipText
       .split('\n')
       .map((ip) => ip.trim())
       .filter((ip) => ip.length > 0);
 
     if (allIps.length === 0) {
+      return;
+    }
+
+    // Validate IP format
+    const { valid, invalidLines } = validateIpListFormat(ipText);
+    if (!valid) {
+      const preview = invalidLines.slice(0, 3).join(', ');
+      setInputError(`Invalid format. Expected one IP per line. Invalid: ${preview}`);
       return;
     }
 
@@ -82,7 +123,7 @@ export function IpInputForm({ onSubmit, onBack }: IpInputFormProps) {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFileError(null);
+    clearErrors();
     const file = e.target.files?.[0];
     if (!file) {
       return;
@@ -111,6 +152,16 @@ export function IpInputForm({ onSubmit, onBack }: IpInputFormProps) {
       // Decode as text
       const decoder = new TextDecoder('utf-8');
       const content = decoder.decode(bytes);
+
+      // Validate content format (one IP per line)
+      const { valid, invalidLines } = validateIpListFormat(content);
+      if (!valid) {
+        const preview = invalidLines.slice(0, 3).join(', ');
+        setFileError(`Invalid format. Expected one IP per line. Invalid: ${preview}`);
+        clearFileInput();
+        return;
+      }
+
       setIpText(content);
     };
     reader.onerror = () => {
@@ -193,8 +244,14 @@ export function IpInputForm({ onSubmit, onBack }: IpInputFormProps) {
             className="textarea h-64"
             placeholder="1.2.3.4&#10;5.6.7.8&#10;..."
             value={ipText}
-            onChange={(e) => setIpText(e.target.value)}
+            onChange={(e) => {
+              setIpText(e.target.value);
+              clearErrors();
+            }}
           />
+          {inputError && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{inputError}</p>
+          )}
         </div>
 
         <div className="flex gap-3">

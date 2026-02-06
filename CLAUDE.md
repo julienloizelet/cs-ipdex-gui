@@ -20,6 +20,8 @@ npx playwright test  # Run e2e tests
 
 All new features must include related e2e tests. Tests use Playwright and are organized by purpose in the `e2e/` directory. Shared helpers are in `e2e/helpers.ts` and mock CTI responses in `e2e/fixtures/`.
 
+**Important:** Before running e2e tests, check if the dev server (`npm run dev`) is already running. If it is, warn the user and ask them to stop it first. Tests may fail or use stale code if an existing server is running. You can check with `lsof -i:5173` or `lsof -i:3000`.
+
 ## Architecture
 
 > **Note:** Keep this tree updated when adding, removing, or renaming files.
