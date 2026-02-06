@@ -13,22 +13,41 @@ npm run dev          # Start dev servers (client :5173, server :3000)
 npm run build        # Build for production
 npm start            # Run production server
 npm run lint         # Run ESLint
+npx playwright test  # Run e2e tests
 ```
+
+## Testing
+
+All new features must include related e2e tests. Tests use Playwright and are organized by purpose in the `e2e/` directory. Shared helpers are in `e2e/helpers.ts` and mock CTI responses in `e2e/fixtures/`.
 
 ## Architecture
 
+> **Note:** Keep this tree updated when adding, removing, or renaming files.
+
 ```
 src/
-├── client/              # React frontend
-│   ├── App.tsx          # Main wizard orchestrator (api-key → ip-input → executing → results)
-│   ├── hooks/useSocket.ts   # Socket.IO connection and state management
-│   └── components/      # Step components (ApiKeyForm, IpInputForm, CommandOutput, ResultsView)
+├── client/
+│   ├── main.tsx             # React entry point
+│   ├── App.tsx              # Main wizard orchestrator (api-key → ip-input → executing → results)
+│   ├── types.ts             # Client-side type definitions
+│   ├── hooks/
+│   │   ├── useSocket.ts     # Socket.IO connection and state management
+│   │   └── useTheme.ts      # Dark/light theme toggle
+│   └── components/
+│       ├── Header.tsx       # App header with theme toggle
+│       ├── ApiKeyForm.tsx   # API key input step
+│       ├── IpInputForm.tsx  # IP address input step
+│       ├── ConfirmDialog.tsx # Query confirmation modal
+│       ├── CommandOutput.tsx # Real-time query progress display
+│       └── ReportView.tsx   # Results display with stat cards
 └── server/
-    ├── index.ts         # Express + Socket.IO setup + per-socket session state
+    ├── index.ts             # Express + Socket.IO setup + per-socket session state
     └── services/cti/
-        ├── client.ts    # HTTP client (fetch with retry/backoff)
-        ├── report.ts    # Report generation + stats aggregation
-        └── types.ts     # CTI API response types
+        ├── index.ts         # Service exports
+        ├── client.ts        # HTTP client (fetch with retry/backoff)
+        ├── report.ts        # Report generation + stats aggregation
+        ├── csv.ts           # CSV export functionality
+        └── types.ts         # CTI API response types
 ```
 
 **Wizard Flow**: API key setup → IP input → Query execution → Results display

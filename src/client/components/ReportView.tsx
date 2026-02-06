@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ReportResult, StatItem } from '../types';
 
 interface ReportViewProps {
@@ -7,15 +8,23 @@ interface ReportViewProps {
   onDownload: () => void;
 }
 
+const DEFAULT_VISIBLE_COUNT = 5;
+
 function StatCard({ title, icon, items, colorClass }: {
   title: string;
   icon: string;
   items: StatItem[];
   colorClass: string;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (items.length === 0) {
     return null;
   }
+
+  const hasMore = items.length > DEFAULT_VISIBLE_COUNT;
+  const visibleItems = isExpanded ? items : items.slice(0, DEFAULT_VISIBLE_COUNT);
+  const hiddenCount = items.length - DEFAULT_VISIBLE_COUNT;
 
   return (
     <div className="card mb-4">
@@ -24,7 +33,7 @@ function StatCard({ title, icon, items, colorClass }: {
         {title}
       </h3>
       <div className="space-y-2">
-        {items.map((item, idx) => (
+        {visibleItems.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between">
             <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 mr-4">
               {item.label}
@@ -40,6 +49,14 @@ function StatCard({ title, icon, items, colorClass }: {
           </div>
         ))}
       </div>
+      {hasMore && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          {isExpanded ? 'Show less' : `See more (+${hiddenCount})`}
+        </button>
+      )}
     </div>
   );
 }
