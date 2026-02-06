@@ -10,6 +10,76 @@ interface ReportViewProps {
 
 const DEFAULT_VISIBLE_COUNT = 5;
 
+// Reputation ordering (most severe first) and colors
+const REPUTATION_ORDER = ['malicious', 'suspicious', 'known', 'benign', 'safe', 'unknown'];
+const REPUTATION_COLORS: Record<string, string> = {
+  malicious: 'bg-red-500/20 text-red-700 dark:text-red-400',
+  suspicious: 'bg-orange-500/20 text-orange-700 dark:text-orange-400',
+  known: 'bg-yellow-300/20 text-yellow-700 dark:text-yellow-400',
+  benign: 'bg-blue-500/20 text-blue-700 dark:text-blue-400',
+  safe: 'bg-green-500/20 text-green-700 dark:text-green-400',
+  unknown: 'bg-gray-500/20 text-gray-700 dark:text-gray-400',
+};
+
+function ReputationCard({ items }: { items: StatItem[] }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  // Sort items by reputation severity order
+  const sortedItems = [...items].sort((a, b) => {
+    const aIndex = REPUTATION_ORDER.indexOf(a.label.toLowerCase());
+    const bIndex = REPUTATION_ORDER.indexOf(b.label.toLowerCase());
+    // Unknown reputations go to the end
+    const aOrder = aIndex === -1 ? REPUTATION_ORDER.length : aIndex;
+    const bOrder = bIndex === -1 ? REPUTATION_ORDER.length : bIndex;
+    return aOrder - bOrder;
+  });
+
+  const hasMore = sortedItems.length > DEFAULT_VISIBLE_COUNT;
+  const visibleItems = isExpanded ? sortedItems : sortedItems.slice(0, DEFAULT_VISIBLE_COUNT);
+  const hiddenCount = sortedItems.length - DEFAULT_VISIBLE_COUNT;
+
+  return (
+    <div className="card mb-4">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <span>🌟</span>
+        Reputation
+      </h3>
+      <div className="space-y-2">
+        {visibleItems.map((item, idx) => {
+          const colorClass = REPUTATION_COLORS[item.label.toLowerCase()] || REPUTATION_COLORS.unknown;
+          return (
+            <div key={idx} className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 mr-4">
+                {item.label}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${colorClass}`}>
+                  {item.count}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 w-12 text-right">
+                  {item.percentage}%
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {hasMore && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          {isExpanded ? 'Show less' : `See more (+${hiddenCount})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function StatCard({ title, icon, items, colorClass }: {
   title: string;
   icon: string;
@@ -121,12 +191,7 @@ export function ReportView({ report, onBack, onNewQuery, onDownload }: ReportVie
         </div>
       </div>
 
-      <StatCard
-        title="Top Reputation"
-        icon="🌟"
-        items={stats.reputation}
-        colorClass="bg-purple-500/20 text-purple-700 dark:text-purple-400"
-      />
+      <ReputationCard items={stats.reputation} />
 
       <StatCard
         title="Top Classifications"

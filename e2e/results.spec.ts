@@ -9,7 +9,7 @@ test.describe('Results content', () => {
   test('stat cards display correct categories', async ({ page }) => {
     await flowToResults(page, 'test-pov-key', '1.2.3.4\n5.6.7.8\n9.10.11.12', true);
 
-    await expect(page.getByText('Top Reputation')).toBeVisible();
+    await expect(page.getByText('Reputation')).toBeVisible();
     await expect(page.getByText('Top Behaviors')).toBeVisible();
     await expect(page.getByText('Top Countries')).toBeVisible();
     await expect(page.getByText('Top Autonomous Systems')).toBeVisible();
@@ -33,6 +33,25 @@ test.describe('Results content', () => {
       page.getByRole('button', { name: 'Download Report' }).click(),
     ]);
     expect(download.suggestedFilename()).toBe('cti-report.tar.gz');
+  });
+
+  test('unknown IPs appear in reputation section', async ({ page }) => {
+    // 192.168.1.1 is not in fixtures, so it's unknown
+    await flowToResults(page, 'test-pov-key', '1.2.3.4\n192.168.1.1', true);
+
+    const reputationCard = page.locator('.card', { has: page.getByText('Reputation') });
+    await expect(reputationCard.getByText('unknown')).toBeVisible();
+  });
+
+  test('reputation percentages are correct with unknown IPs', async ({ page }) => {
+    // 1.2.3.4 is malicious, 192.168.1.1 is unknown -> each should be 50%
+    await flowToResults(page, 'test-pov-key', '1.2.3.4\n192.168.1.1', true);
+
+    const reputationCard = page.locator('.card', { has: page.getByText('Reputation') });
+
+    // Both malicious and unknown should show 50% (1 out of 2 IPs each)
+    const percentages = reputationCard.locator('text=50%');
+    await expect(percentages).toHaveCount(2);
   });
 });
 

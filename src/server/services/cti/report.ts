@@ -24,6 +24,12 @@ function aggregateStats(items: CTIObject[], totalIPs: number): ReportResult {
   const asMap = new Map<string, number>();
   const countriesMap = new Map<string, number>();
 
+  // Count unknown IPs (not found in CTI database)
+  const unknownCount = totalIPs - knownCount;
+  if (unknownCount > 0) {
+    reputationMap.set('unknown', unknownCount);
+  }
+
   for (const item of items) {
     // Reputation
     if (item.reputation) {
@@ -79,12 +85,12 @@ function aggregateStats(items: CTIObject[], totalIPs: number): ReportResult {
     }
   }
 
-  function mapToStats(map: Map<string, number>): StatItem[] {
+  function mapToStats(map: Map<string, number>, total: number): StatItem[] {
     return Array.from(map.entries())
       .map(([label, count]) => ({
         label,
         count,
-        percentage: knownCount > 0 ? Math.round((count / knownCount) * 100) : 0,
+        percentage: total > 0 ? Math.round((count / total) * 100) : 0,
       }))
       .sort((a, b) => b.count - a.count);
   }
@@ -97,14 +103,16 @@ function aggregateStats(items: CTIObject[], totalIPs: number): ReportResult {
       inBlocklist: { count: inBlocklistCount, percentage: inBlocklistPercentage },
     },
     stats: {
-      reputation: mapToStats(reputationMap),
-      classifications: mapToStats(classificationsMap),
-      behaviors: mapToStats(behaviorsMap),
-      blocklists: mapToStats(blocklistsMap),
-      cves: mapToStats(cvesMap),
-      ipRanges: mapToStats(ipRangesMap),
-      autonomousSystems: mapToStats(asMap),
-      countries: mapToStats(countriesMap),
+      // Reputation uses totalIPs (includes unknown)
+      reputation: mapToStats(reputationMap, totalIPs),
+      // Other stats use knownCount (only IPs found in CTI)
+      classifications: mapToStats(classificationsMap, knownCount),
+      behaviors: mapToStats(behaviorsMap, knownCount),
+      blocklists: mapToStats(blocklistsMap, knownCount),
+      cves: mapToStats(cvesMap, knownCount),
+      ipRanges: mapToStats(ipRangesMap, knownCount),
+      autonomousSystems: mapToStats(asMap, knownCount),
+      countries: mapToStats(countriesMap, knownCount),
     },
   };
 }
