@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 
 export interface DuplicateInfo {
   ip: string;
@@ -171,10 +171,24 @@ export function IpInputForm({ onSubmit, onBack }: IpInputFormProps) {
     reader.readAsArrayBuffer(file);
   };
 
-  const ipCount = ipText
-    .split('\n')
-    .map((ip) => ip.trim())
-    .filter((ip) => ip.length > 0).length;
+  const ipCount = useMemo(() => {
+    let count = 0;
+    let i = 0;
+    while (i < ipText.length) {
+      // Skip whitespace
+      while (i < ipText.length && (ipText[i] === ' ' || ipText[i] === '\t' || ipText[i] === '\n' || ipText[i] === '\r')) {
+        i++;
+      }
+      if (i < ipText.length) {
+        count++;
+        // Skip to next newline
+        while (i < ipText.length && ipText[i] !== '\n') {
+          i++;
+        }
+      }
+    }
+    return count;
+  }, [ipText]);
 
   return (
     <div className="card max-w-2xl mx-auto">
