@@ -1,10 +1,16 @@
+import type { DuplicateInfo } from './IpInputForm';
+
 interface ConfirmDialogProps {
   ipCount: number;
+  duplicates: DuplicateInfo[];
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export function ConfirmDialog({ ipCount, onCancel, onConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({ ipCount, duplicates, onCancel, onConfirm }: ConfirmDialogProps) {
+  const hasDuplicates = duplicates.length > 0;
+  const totalDuplicateCount = duplicates.reduce((sum, d) => sum + d.count - 1, 0);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
@@ -38,6 +44,21 @@ export function ConfirmDialog({ ipCount, onCancel, onConfirm }: ConfirmDialogPro
             </span>
             . Make sure your key has sufficient quota before continuing.
           </p>
+
+          {hasDuplicates && (
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                {totalDuplicateCount} duplicate{totalDuplicateCount !== 1 ? 's' : ''} removed:
+              </p>
+              <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-1 max-h-32 overflow-y-auto">
+                {duplicates.map((d) => (
+                  <li key={d.ip} className="font-mono">
+                    {d.ip} <span className="text-amber-500">({d.count}x)</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="flex gap-3">
           <button

@@ -3,7 +3,7 @@ import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
 import { Header } from './components/Header';
 import { ApiKeyForm } from './components/ApiKeyForm';
-import { IpInputForm } from './components/IpInputForm';
+import { IpInputForm, type DuplicateInfo } from './components/IpInputForm';
 import { CommandOutput } from './components/CommandOutput';
 import { ReportView } from './components/ReportView';
 import { ConfirmDialog } from './components/ConfirmDialog';
@@ -15,6 +15,7 @@ function App() {
   const [isPovKey, setIsPovKey] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingIPs, setPendingIPs] = useState<string[]>([]);
+  const [pendingDuplicates, setPendingDuplicates] = useState<DuplicateInfo[]>([]);
   const { theme, toggleTheme } = useTheme();
 
   const { output, isRunning, init, createReport, downloadReport, clearOutput } = useSocket({
@@ -37,8 +38,9 @@ function App() {
     init(key);
   };
 
-  const handleIpSubmit = (ips: string[]) => {
+  const handleIpSubmit = (ips: string[], duplicates: DuplicateInfo[]) => {
     setPendingIPs(ips);
+    setPendingDuplicates(duplicates);
     setShowConfirmDialog(true);
   };
 
@@ -47,11 +49,13 @@ function App() {
     setStep('executing');
     createReport(pendingIPs, isPovKey);
     setPendingIPs([]);
+    setPendingDuplicates([]);
   };
 
   const handleCancelQuery = () => {
     setShowConfirmDialog(false);
     setPendingIPs([]);
+    setPendingDuplicates([]);
   };
 
   const handleBackToApiKey = () => {
@@ -99,6 +103,7 @@ function App() {
       {showConfirmDialog && (
         <ConfirmDialog
           ipCount={pendingIPs.length}
+          duplicates={pendingDuplicates}
           onCancel={handleCancelQuery}
           onConfirm={handleConfirmQuery}
         />
