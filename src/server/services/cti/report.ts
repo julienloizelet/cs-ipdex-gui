@@ -1,7 +1,7 @@
 import { queryIP, queryBatch, CTIError } from './client.js';
 import type { CTIObject, OutputCallback, ReportResult, StatItem } from './types.js';
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 100;
 const COMMUNITY_DELAY_MS = 1200;
 
 function sleep(ms: number): Promise<void> {
