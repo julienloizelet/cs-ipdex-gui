@@ -162,7 +162,7 @@ export function ReportView({ report, onBack, onNewQuery, onDownload }: ReportVie
         </div>
 
         <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {general.numberOfIPs}
@@ -176,15 +176,7 @@ export function ReportView({ report, onBack, onNewQuery, onDownload }: ReportVie
                 {general.knownIPs.count}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                Known ({general.knownIPs.percentage}%)
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {general.inBlocklist.count}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                Blocklisted ({general.inBlocklist.percentage}%)
+                In CTI ({general.knownIPs.percentage}%)
               </p>
             </div>
           </div>
