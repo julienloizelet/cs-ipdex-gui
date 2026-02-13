@@ -12,8 +12,10 @@ This document provides instructions for setting up and developing the CrowdSec C
 
 ```bash
 # Clone the repository
-git clone https://github.com/julienloizelet/cs-ipdex-gui.git
+mkdir cs-ipdex-gui
 cd cs-ipdex-gui
+git clone https://github.com/crowdsecurity/IPDEX-JS.git ./
+
 
 # Install dependencies
 npm install
@@ -40,6 +42,17 @@ npm run dev:client    # Start Vite dev server only
 npm run dev:server    # Start Express server only (with hot reload)
 npm run lint          # Run ESLint
 ```
+
+### E2E Tests
+
+```bash
+npx playwright test              # Run all e2e tests
+npx playwright test --headed     # Run with visible browser
+```
+
+Tests are in the `e2e/` directory and use Playwright with a mock CTI server. Shared helpers are in `e2e/helpers.ts` and mock responses in `e2e/fixtures/`.
+
+**Note:** Stop the dev server before running tests, as they start their own server.
 
 ## Building for Production
 
@@ -80,7 +93,8 @@ src/
             ├── index.ts   # Barrel exports
             ├── types.ts   # CTI API response types
             ├── client.ts  # HTTP client (fetch with retry/backoff)
-            └── report.ts  # Report generation + stats aggregation
+            ├── report.ts  # Report generation + stats aggregation
+            └── csv.ts     # CSV export + tar.gz archive generation
 ```
 
 ## API Reference
@@ -99,14 +113,14 @@ src/
 |-------|---------|-------------|
 | `init` | `apiKey: string` | Store API key in session |
 | `createReport` | `{ ips: string[], isPovKey: boolean }` | Query IPs and generate report |
-| `downloadReport` | _(none)_ | Download raw CTI data as gzipped JSON |
+| `downloadReport` | _(none)_ | Download report as `.tar.gz` archive (CSV files) |
 
 **Server → Client:**
 
 | Event | Payload | Description |
 |-------|---------|-------------|
 | `output` | `{ type, data, code? }` | Real-time progress output |
-| `reportFile` | `{ data: ArrayBuffer }` | Gzipped JSON file for download |
+| `reportFile` | `{ data: ArrayBuffer }` | `.tar.gz` archive for download |
 
 Output types:
 - `stdout`: Progress messages and JSON results (between `---RESULTS_JSON---` markers)
@@ -117,15 +131,15 @@ Output types:
 ## Application Workflow
 
 1. **API Key Setup**: User enters CrowdSec CTI API key and optionally checks "Using a PoV Key"
-2. **IP Input**: User enters IP addresses (one per line)
+2. **IP Input**: User enters IP addresses (one per line) or uploads a text file. Input is validated to ensure one IP per line format
 3. **Confirmation**: Modal asks user to confirm the query (quota warning)
 4. **Report Creation**:
-   - PoV key: Server queries CTI API in batches of 20 via `GET /smoke?ips=...`
+   - PoV key: Server queries CTI API in batches of 100 via `GET /smoke?ips=...`
    - Community key: Server queries IPs one at a time via `GET /smoke/{ip}` with rate limiting
    - Progress is streamed to the client in real-time
    - Results are aggregated into statistics
 5. **Results Display**: Report displayed with summary stats and cards:
-   - Top Reputation (Malicious, Suspicious, Known, Safe)
+   - Reputation (Malicious, Suspicious, Known, Safe)
    - Top Classifications
    - Top Behaviors
    - Top Blocklists
@@ -133,7 +147,7 @@ Output types:
    - Top IP Ranges
    - Top Autonomous Systems
    - Top Countries
-6. **Download**: Exports raw CTI API responses as gzipped JSON
+6. **Download**: Exports a `.tar.gz` archive containing two CSV files: `report.csv` (aggregated stats) and `details.csv` (per-IP raw data)
 
 ## CTI API Integration
 

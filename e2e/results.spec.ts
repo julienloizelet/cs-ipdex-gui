@@ -22,7 +22,7 @@ test.describe('Results content', () => {
     await flowToResults(page, 'test-pov-key', '1.2.3.4\n5.6.7.8', true);
 
     await expect(page.getByText('Total IPs')).toBeVisible();
-    await expect(page.getByText('Known (100%)')).toBeVisible();
+    await expect(page.getByText('In CTI (100%)')).toBeVisible();
   });
 
   test('download triggers tar.gz file', async ({ page }) => {

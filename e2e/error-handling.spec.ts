@@ -21,6 +21,6 @@ test.describe('Error handling', () => {
   test('unknown IP shows partial results', async ({ page }) => {
     await flowToResults(page, 'test-pov-key', '1.2.3.4\n192.168.1.1', true);
     // 2 total, 1 known = 50%
-    await expect(page.getByText('Known (50%)')).toBeVisible();
+    await expect(page.getByText('In CTI (50%)')).toBeVisible();
   });
 });

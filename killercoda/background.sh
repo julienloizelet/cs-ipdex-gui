@@ -18,10 +18,9 @@ npm --version
 
 # Clone and build the GUI
 echo "Setting up IPdex GUI..."
-cd /root
-git clone https://github.com/julienloizelet/cs-ipdex-gui.git
+mkdir -p /root/cs-ipdex-gui
 cd /root/cs-ipdex-gui
-git checkout feat/full-js
+git clone https://github.com/crowdsecurity/IPDEX-JS.git ./
 npm install
 npm run build
 

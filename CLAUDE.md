@@ -58,6 +58,13 @@ src/
 
 **CTI Integration**: Server queries CrowdSec CTI API (`https://cti.api.crowdsec.net/v2`) directly via fetch. PoV keys use batch endpoint, community keys use single-IP endpoint with rate limiting. Results are aggregated into stats and sent via JSON markers in output.
 
+## Documentation
+
+When implementing a new feature, update all relevant documentation:
+- **`CLAUDE.md`** — Update the architecture tree and any affected sections.
+- **`docs/DEVELOPER.md`** — Update the project structure, workflow, API reference, or any technical details that changed.
+- **`README.md`** — Update the usage section if the feature is user-facing.
+
 ## React Patterns
 
 **Avoid useEffect when possible** (see [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect)):
